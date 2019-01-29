@@ -8,6 +8,8 @@ The peak memory usage **decreased by ~80%** from version 4.5.3 → 5.x.x
 
 Average memory usage **decreased by ~70%** from version 4.5.3 → 5.x.x
 
+We are also able to **serve ~29% more requests/sec** from version 4.5.3 → 5.x.x
+
 (When referring to 5.x.x I mean this work in progress branch [https://github.com/getsentry/sentry-javascript/tree/ref/make-sync](https://github.com/getsentry/sentry-javascript/tree/ref/make-sync))
 
 ## Installation + How to run:
