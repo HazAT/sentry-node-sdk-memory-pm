@@ -5,13 +5,14 @@ This repo should provide a repro case + results for `@sentry/node` SDK found at:
 The file `express.js` in this repo was used to measure the following results.
 
 The peak memory usage **decreased by ~80%** from version 4.5.3 → 5.x.x
+
 Average memory usage **decreased by ~70%** from version 4.5.3 → 5.x.x
 
 (When referring to 5.x.x I mean this work in progress branch [https://github.com/getsentry/sentry-javascript/tree/ref/make-sync](https://github.com/getsentry/sentry-javascript/tree/ref/make-sync))
 
 ## Installation + How to run:
 
-`git clone [https://github.com/HazAT/sentry-node-sdk-memory-pm.git](https://github.com/HazAT/sentry-node-sdk-memory-pm.git)`
+`git clone https://github.com/HazAT/sentry-node-sdk-memory-pm.git`
 
 `npm install`
 
@@ -26,7 +27,7 @@ The graphs in this repo where created with [https://github.com/watson/memory-usa
 Node version `10.15.0` was used for all the tests.
 
 After the server is started, we run a ApacheBench command:
-`ab -c 20 -n 10000 [http://localhost:3000/](http://localhost:3000/)`
+`ab -c 20 -n 10000 http://localhost:3000/`
 
 Running 10000 Requests with 20 concurrent connections. 
 
@@ -35,8 +36,6 @@ Running 10000 Requests with 20 concurrent connections.
 ## Screenshot showing a graph of memory usage for 4.5.3
 
 ![](single-4-c310534d-4ab7-4542-8695-9bdb5b67b756.5.3.png)
-
-[Memory usage single ApacheBench run for 4.5.3](https://www.notion.so/fb47373459944243b90d05d4a34e04d9)
 
 ## Output ApacheBench command using 4.5.3 for a single run:
 
@@ -100,8 +99,6 @@ Running 10000 Requests with 20 concurrent connections.
 
 ![](3runs-4-7bc21989-f60a-4fc9-8382-6f4e916daff4.5.3.png)
 
-[Memory usage 3 ApacheBench runs using 4.5.3](https://www.notion.so/5aa3acbd489048f0b4657eb30e99f3fe)
-
 # Using 5.x.x:
 
 [https://github.com/getsentry/sentry-javascript/tree/ref/make-sync](https://github.com/getsentry/sentry-javascript/tree/ref/make-sync)
@@ -109,8 +106,6 @@ Running 10000 Requests with 20 concurrent connections.
 ## Screenshot showing a graph of memory usage for 5.x.x
 
 ![](single-5-94030d59-292f-406b-8153-bb0f983c5dea.0.0.png)
-
-[Memory usage single ApacheBench run for 5.x.x](https://www.notion.so/1ff2dd52e94a4dfbb59031aeb19bad9c)
 
 ## Output ApacheBench command using 5.x.x for a single run:
 
@@ -173,5 +168,3 @@ Running 10000 Requests with 20 concurrent connections.
 ## Using 5.x.x and run ApacheBench 3 times in total (after each GC):
 
 ![](3runs-5-9bd9087b-66cf-45d0-b55d-1a08052fafa5.0.0.png)
-
-[Memory usage 3 3 ApacheBench runs using 5.x.x](https://www.notion.so/00f7cfa43b124d2abf847541473f7b52)
