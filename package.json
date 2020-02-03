@@ -6,7 +6,8 @@
   "author": "Daniel Griesser <daniel.griesser.86@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "@sentry/node": "^4.5.3",
-    "express": "^4.16.4"
+    "@sentry/node": "^5.11.2",
+    "express": "^4.16.4",
+    "memory-usage": "^1.2.1"
   }
 }

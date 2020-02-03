@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const Sentry = require('@sentry/node');
 
+
 // Enter your DSN here
 const dsn = 'YOUR_DSN';
 
@@ -12,6 +13,7 @@ if (dsn === 'YOUR_DSN') {
 
 Sentry.init({
   dsn,
+  // debug: true
 });
 
 app.use(Sentry.Handlers.requestHandler());
@@ -22,10 +24,7 @@ app.get('/', function mainHandler(req, res) {
       for (let i = 0; i < 5000; i++) {
         obj[`index${i}`] = [new String('ABC'.repeat(100))];
       }
-      scope.addEventProcessor(function (event) {
-        event.extra['foo'] = obj;
-        return event;
-      });
+      scope.setExtra("foo", obj);
     });
 
     throw new Error('aaa');
