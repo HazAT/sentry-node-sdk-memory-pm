@@ -6,13 +6,16 @@
   "author": "Daniel Griesser <daniel.griesser.86@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "start:memory": "memory-usage express.js",
+    "start:memory": "node memory-monitor.js",
     "start:inspect": "node --inspect express.js",
     "ab": "ab -c 20 -n 1000 http://localhost:3000/"
   },
   "dependencies": {
-    "@sentry/node": "^5.11.2",
+    "@sentry/node": "^9.42.0",
     "express": "^4.16.4",
-    "memory-usage": "^1.2.1"
+    "pidusage": "^3.0.2"
+  },
+  "volta": {
+    "node": "20.19.3"
   }
 }

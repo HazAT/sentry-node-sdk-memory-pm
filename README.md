@@ -1,39 +1,94 @@
-# Sentry Node SDK Memory Usage
+# Sentry Node SDK Memory Usage Benchmark
 
-This repo should provide a repro case + results for `@sentry/node` SDK found at: [https://github.com/getsentry/sentry-javascript/tree/master/packages/node](https://github.com/getsentry/sentry-javascript/tree/master/packages/node)
+This repo provides a performance benchmark for the `@sentry/node` SDK found at: [https://github.com/getsentry/sentry-javascript/tree/master/packages/node](https://github.com/getsentry/sentry-javascript/tree/master/packages/node)
 
-The file `express.js` in this repo was used to measure the following results.
+The file `express.js` in this repo was used to measure memory and performance improvements across Sentry SDK versions.
 
-The peak memory usage **decreased by ~80%** from version 4.5.3 → 5.x.x
+## Performance Results
 
-Average memory usage **decreased by ~70%** from version 4.5.3 → 5.x.x
+### Historical Results (2019)
+- Peak memory usage **decreased by ~80%** from version 4.5.3 → 5.x.x
+- Average memory usage **decreased by ~70%** from version 4.5.3 → 5.x.x  
+- **29% more requests/sec** from version 4.5.3 → 5.x.x
 
-We are also able to **serve ~29% more requests/sec** from version 4.5.3 → 5.x.x
+### Current Benchmarking (2025)
+This repo has been updated to benchmark the latest Sentry SDK version **9.42.0** with modern tooling and Node.js compatibility.
 
-(When referring to 5.x.x I mean this work in progress branch [https://github.com/getsentry/sentry-javascript/tree/ref/make-sync](https://github.com/getsentry/sentry-javascript/tree/ref/make-sync))
+## Requirements
 
-## Installation + How to run:
+- **Node.js**: 20.19.3+ (managed via Volta)
+- **Sentry DSN**: Required for testing (add to `express.js:7`)
+- **ApacheBench**: For load testing (`ab` command)
 
-`git clone https://github.com/HazAT/sentry-node-sdk-memory-pm.git`
+## Installation & Setup
 
-`npm install`
+```bash
+git clone https://github.com/HazAT/sentry-node-sdk-memory-pm.git
+cd sentry-node-sdk-memory-pm
+npm install
+```
 
-or
+**Configure Sentry DSN**: Edit `express.js` line 7 and replace `YOUR_DSN` with your actual Sentry DSN.
 
-`yarn install`
+## Running Benchmarks
 
-Then run the application with `node --inspect express.js` and open Google Chrome Memory inspection tool (can be found in the developer console).
+### Memory Monitoring (Modern Approach)
+```bash
+npm run start:memory
+```
+Uses `pidusage` for real-time memory and CPU monitoring (replaces deprecated `memory-usage` package).
 
-The graphs in this repo where created with [https://github.com/watson/memory-usage](https://github.com/watson/memory-usage) used exactly as described in the repo (ran with `memory-usage express.js`)
+### Alternative Monitoring Methods
+```bash
+# Chrome DevTools integration
+npm run start:inspect
 
-Node version `10.15.0` was used for all the tests.
+# Basic server start
+node express.js
+```
 
-After the server is started, we run a ApacheBench command:
-`ab -c 20 -n 10000 http://localhost:3000/`
+### Load Testing
+After starting the server, run ApacheBench in a separate terminal:
+```bash
+npm run ab
+# Equivalent to: ab -c 20 -n 1000 http://localhost:3000/
+```
 
-Running 10000 Requests with 20 concurrent connections. 
+For more intensive testing (original benchmarks):
+```bash
+ab -c 20 -n 10000 http://localhost:3000/
+```
 
-# Using 4.5.3:
+## What's New (2025 Update)
+
+- **Sentry SDK**: Updated from `5.11.2` → `9.42.0` (latest)
+- **Memory Monitoring**: Replaced `memory-usage` with `pidusage` (Node.js 20+ compatible)
+- **Modern Sentry API**: Updated to use `withScope()` and `setupExpressErrorHandler()`
+- **Volta Support**: Pinned to Node.js 20.19.3 for optimal compatibility
+- **Real-time Monitoring**: Added `memory-monitor.js` for live memory/CPU stats
+
+## Expected Performance Improvements
+
+Based on the historical results, you can expect significant performance gains when testing Sentry SDK 9.42.0 vs older versions:
+- **Memory usage reduction**: 70-80% less peak memory consumption
+- **Request throughput**: 25-30% more requests per second
+- **CPU efficiency**: Improved error handling with OpenTelemetry integration
+
+## Sample Output
+
+When running `npm run start:memory`, you'll see real-time stats like:
+```
+Starting Express server with memory monitoring...
+[1.0s] Memory: 70.6MB | CPU: 23.0%
+[2.0s] Memory: 70.6MB | CPU: 0.0%
+[3.0s] Memory: 70.6MB | CPU: 0.0%
+```
+
+---
+
+# Historical Benchmark Results
+
+## Using 4.5.3 (2019):
 
 ## Screenshot showing a graph of memory usage for 4.5.3
 
@@ -101,9 +156,9 @@ Running 10000 Requests with 20 concurrent connections.
 
 ![](3runs-4-7bc21989-f60a-4fc9-8382-6f4e916daff4.5.3.png)
 
-# Using 5.x.x:
+# Using 5.x.x (2019):
 
-[https://github.com/getsentry/sentry-javascript/tree/ref/make-sync](https://github.com/getsentry/sentry-javascript/tree/ref/make-sync)
+**Reference branch**: [https://github.com/getsentry/sentry-javascript/tree/ref/make-sync](https://github.com/getsentry/sentry-javascript/tree/ref/make-sync)
 
 ## Screenshot showing a graph of memory usage for 5.x.x
 

@@ -13,24 +13,25 @@ if (dsn === 'YOUR_DSN') {
 
 Sentry.init({
   dsn,
+  sendDefaultPii: true,
+  tracesSampleRate: 1.0,
   // debug: true
 });
 
-app.use(Sentry.Handlers.requestHandler());
-
 app.get('/', function mainHandler(req, res) {
-    Sentry.configureScope(function (scope) {
+    Sentry.withScope(function (scope) {
       let obj = {};
       for (let i = 0; i < 5000; i++) {
         obj[`index${i}`] = [new String('ABC'.repeat(100))];
       }
       scope.setExtra("foo", obj);
+      
+      throw new Error('aaa');
     });
-
-    throw new Error('aaa');
 });
 
-app.use(Sentry.Handlers.errorHandler());
+// Add Sentry error handler after all routes, before other error handling
+Sentry.setupExpressErrorHandler(app);
 
 app.use(function onError(err, req, res, next) {
   res.statusCode = 500;
