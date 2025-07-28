@@ -9,6 +9,7 @@ class ReliableBenchmark {
     this.startTime = Date.now();
     this.server = null;
     this.monitorInterval = null;
+    this.loadTestEvents = []; // Track multiple load test events
   }
 
   async startMonitoring(durationMs = 45000) {
@@ -64,11 +65,17 @@ class ReliableBenchmark {
     }
   }
 
-  async runLoadTest(requests = 1000, concurrency = 20) {
-    console.log(`\\n🔥 Starting load test: ${requests} requests, ${concurrency} concurrent...`);
+  async runSingleLoadTest(requests = 500, concurrency = 20, testNumber = 1) {
+    const startTime = (Date.now() - this.startTime) / 1000;
+    console.log(`\\n🔥 Load test ${testNumber}: ${requests} requests, ${concurrency} concurrent (at ${startTime.toFixed(1)}s)...`);
     
-    // Wait for server to be stable
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    this.loadTestEvents.push({
+      type: 'start',
+      time: startTime,
+      testNumber: testNumber,
+      requests: requests,
+      concurrency: concurrency
+    });
     
     return new Promise((resolve, reject) => {
       const ab = spawn('ab', [
@@ -89,30 +96,68 @@ class ReliableBenchmark {
       });
       
       ab.on('close', (code) => {
+        const endTime = (Date.now() - this.startTime) / 1000;
+        
         if (code === 0) {
-          console.log('✅ Load test completed successfully');
-          this.parseLoadTestResults(output);
+          console.log(`✅ Load test ${testNumber} completed (${endTime.toFixed(1)}s)`);
+          this.loadTestEvents.push({
+            type: 'end',
+            time: endTime,
+            testNumber: testNumber
+          });
+          this.parseLoadTestResults(output, testNumber);
           resolve(output);
         } else {
-          console.error('❌ Load test failed:', errorOutput);
-          resolve(); // Don't reject, continue with chart generation
+          console.error(`❌ Load test ${testNumber} failed:`, errorOutput);
+          this.loadTestEvents.push({
+            type: 'end',
+            time: endTime,
+            testNumber: testNumber,
+            failed: true
+          });
+          resolve(); // Don't reject, continue with next test
         }
       });
     });
   }
 
-  parseLoadTestResults(output) {
-    console.log('\\n📈 Load Test Results:');
+  async runMultipleLoadTests(durationSeconds = 60) {
+    console.log(`\\n🎯 Running multiple load tests over ${durationSeconds} seconds...`);
     
+    // Wait for server to be stable
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    
+    const endTime = Date.now() + (durationSeconds * 1000);
+    let testNumber = 1;
+    
+    while (Date.now() < endTime) {
+      const remainingTime = (endTime - Date.now()) / 1000;
+      
+      if (remainingTime < 10) break; // Don't start a test if less than 10s remaining
+      
+      await this.runSingleLoadTest(300, 15, testNumber);
+      testNumber++;
+      
+      // Wait between tests (3-8 seconds)
+      const waitTime = 3000 + Math.random() * 5000;
+      console.log(`⏳ Waiting ${(waitTime/1000).toFixed(1)}s before next test...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
+    console.log(`\\n🏁 Completed ${testNumber - 1} load tests over ${durationSeconds}s`);
+  }
+
+  parseLoadTestResults(output, testNumber) {
     const requestsPerSec = output.match(/Requests per second:\\s+([\\d.]+)/);
     const timePerRequest = output.match(/Time per request:\\s+([\\d.]+).*\\(mean\\)/);
     const completedRequests = output.match(/Complete requests:\\s+(\\d+)/);
     const failedRequests = output.match(/Failed requests:\\s+(\\d+)/);
     
-    if (requestsPerSec) console.log(`📊 Requests/sec: ${requestsPerSec[1]}`);
-    if (timePerRequest) console.log(`⏱️  Time/request: ${timePerRequest[1]}ms`);
-    if (completedRequests) console.log(`✅ Completed: ${completedRequests[1]}`);
-    if (failedRequests) console.log(`❌ Failed: ${failedRequests[1]}`);
+    console.log(`📊 Test ${testNumber} Results:`);
+    if (requestsPerSec) console.log(`   📈 Requests/sec: ${requestsPerSec[1]}`);
+    if (timePerRequest) console.log(`   ⏱️  Time/request: ${timePerRequest[1]}ms`);
+    if (completedRequests) console.log(`   ✅ Completed: ${completedRequests[1]}`);
+    if (failedRequests) console.log(`   ❌ Failed: ${failedRequests[1]}`);
   }
 
   async generateChart(filename) {
@@ -141,39 +186,85 @@ class ReliableBenchmark {
       avg: (cpuData.reduce((a, b) => a + b, 0) / cpuData.length).toFixed(1)
     };
 
-    // Simple, reliable chart configuration
+    // Create marker data for load test end events only
+    const maxValue = Math.max(...memoryData, ...cpuData);
+    const limitedLabels = labels.slice(0, 50);
+
+    const loadTestEndData = limitedLabels.map((label) => {
+      const time = parseFloat(label);
+      const endEvent = this.loadTestEvents.find(event => 
+        event.type === 'end' && Math.abs(time - event.time) < 0.5
+      );
+      return endEvent ? maxValue : null;
+    });
+
+    // Chart configuration with load test end markers only
+    const datasets = [
+      {
+        label: 'Memory (MB)',
+        data: memoryData.slice(0, 50),
+        borderColor: '#36A2EB',
+        backgroundColor: 'rgba(54,162,235,0.1)',
+        fill: true,
+        tension: 0.1
+      },
+      {
+        label: 'CPU (%)',
+        data: cpuData.slice(0, 50),
+        borderColor: '#FF6384',
+        backgroundColor: 'rgba(255,99,132,0.1)',
+        fill: false,
+        tension: 0.1
+      }
+    ];
+
+    // Add load test end markers if we have events
+    if (this.loadTestEvents.some(e => e.type === 'end')) {
+      datasets.push({
+        label: 'Load Test Complete',
+        data: loadTestEndData,
+        borderColor: '#28A745',
+        backgroundColor: '#28A745',
+        borderWidth: 3,
+        pointRadius: 6,
+        pointBackgroundColor: '#28A745',
+        showLine: false,
+        fill: false
+      });
+    }
+
     const chartConfig = {
       type: 'line',
       data: {
-        labels: labels.slice(0, 50), // Limit to 50 points for reliability
-        datasets: [
-          {
-            label: 'Memory (MB)',
-            data: memoryData.slice(0, 50),
-            borderColor: '#36A2EB',
-            backgroundColor: 'rgba(54,162,235,0.1)',
-            fill: true
-          },
-          {
-            label: 'CPU (%)',
-            data: cpuData.slice(0, 50),
-            borderColor: '#FF6384',
-            backgroundColor: 'rgba(255,99,132,0.1)',
-            fill: false
-          }
-        ]
+        labels: labels.slice(0, 50),
+        datasets: datasets
       },
       options: {
         responsive: true,
         plugins: {
           title: {
             display: true,
-            text: 'Sentry SDK v9.42.0 Benchmark Results'
+            text: `Sentry SDK v9.42.0 - ${this.loadTestEvents.filter(e => e.type === 'start').length} Load Tests`
+          },
+          legend: {
+            display: true,
+            position: 'top'
           }
         },
         scales: {
-          x: { title: { display: true, text: 'Time (s)' } },
-          y: { title: { display: true, text: 'Usage' }, beginAtZero: true }
+          x: { 
+            title: { display: true, text: 'Time (seconds)' },
+            grid: { display: true }
+          },
+          y: { 
+            title: { display: true, text: 'Usage (MB / %)' }, 
+            beginAtZero: true,
+            grid: { display: true }
+          }
+        },
+        interaction: {
+          intersect: false,
+          mode: 'index'
         }
       }
     };
@@ -233,23 +324,22 @@ class ReliableBenchmark {
 
   async runFullBenchmark(options = {}) {
     const {
-      duration = 30000, // Shorter default for reliability
-      requests = 1000,
-      concurrency = 20,
+      duration = 90000, // Extended for multiple load tests
+      loadTestDuration = 60, // Duration of load testing phase in seconds
       filename = `sentry-benchmark-${Date.now()}.png`
     } = options;
 
-    console.log(`🎯 Starting benchmark:`);
-    console.log(`⏱️  Duration: ${duration/1000}s`);
-    console.log(`🔥 Load test: ${requests} requests, ${concurrency} concurrent`);
+    console.log(`🎯 Starting extended benchmark:`);
+    console.log(`⏱️  Total duration: ${duration/1000}s`);
+    console.log(`🔥 Load testing phase: ${loadTestDuration}s with multiple runs`);
     console.log(`📊 Chart: ${filename}`);
 
     try {
       // Start monitoring
       await this.startMonitoring(duration);
 
-      // Run load test concurrently
-      const loadTestPromise = this.runLoadTest(requests, concurrency);
+      // Run multiple load tests concurrently with monitoring
+      const loadTestPromise = this.runMultipleLoadTests(loadTestDuration);
 
       // Wait for monitoring to complete
       await new Promise((resolve) => {
@@ -261,14 +351,15 @@ class ReliableBenchmark {
         }, 500);
       });
 
-      // Ensure load test completes
+      // Ensure load tests complete
       await loadTestPromise;
 
       // Generate chart with timeout protection
       console.log('\\n📊 Generating performance chart...');
       try {
         await this.generateChart(filename);
-        console.log('\\n🎉 Benchmark completed successfully!');
+        console.log('\\n🎉 Extended benchmark completed successfully!');
+        this.printLoadTestSummary();
         return filename;
       } catch (chartError) {
         console.log('\\n⚠️  Benchmark completed (chart generation failed)');
@@ -281,14 +372,30 @@ class ReliableBenchmark {
       throw error;
     }
   }
+
+  printLoadTestSummary() {
+    const startEvents = this.loadTestEvents.filter(e => e.type === 'start');
+    const endEvents = this.loadTestEvents.filter(e => e.type === 'end');
+    const failedTests = endEvents.filter(e => e.failed).length;
+    
+    console.log('\\n📋 Load Test Summary:');
+    console.log(`🔥 Total tests run: ${startEvents.length}`);
+    console.log(`✅ Successful tests: ${endEvents.length - failedTests}`);
+    if (failedTests > 0) console.log(`❌ Failed tests: ${failedTests}`);
+    
+    if (startEvents.length > 0) {
+      const firstStart = Math.min(...startEvents.map(e => e.time));
+      const lastEnd = Math.max(...endEvents.map(e => e.time));
+      console.log(`⏱️  Load testing span: ${firstStart.toFixed(1)}s - ${lastEnd.toFixed(1)}s`);
+    }
+  }
 }
 
 // CLI usage
 if (require.main === module) {
-  const duration = process.argv[2] ? parseInt(process.argv[2]) * 1000 : 30000;
-  const requests = process.argv[3] ? parseInt(process.argv[3]) : 1000;
-  const concurrency = process.argv[4] ? parseInt(process.argv[4]) : 20;
-  const filename = process.argv[5] || `sentry-benchmark-${Date.now()}.png`;
+  const totalDuration = process.argv[2] ? parseInt(process.argv[2]) * 1000 : 90000;
+  const loadTestDuration = process.argv[3] ? parseInt(process.argv[3]) : 60;
+  const filename = process.argv[4] || `sentry-multi-benchmark-${Date.now()}.png`;
 
   const benchmark = new ReliableBenchmark();
   
@@ -300,9 +407,8 @@ if (require.main === module) {
   });
 
   benchmark.runFullBenchmark({
-    duration,
-    requests,
-    concurrency,
+    duration: totalDuration,
+    loadTestDuration,
     filename
   }).then((result) => {
     if (result) {
