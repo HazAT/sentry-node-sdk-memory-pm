@@ -1,13 +1,14 @@
+require('dotenv').config();
+
 const express = require('express');
 const app = express();
 const Sentry = require('@sentry/node');
 
+// Load DSN from environment variable
+const dsn = process.env.SENTRY_DSN;
 
-// Enter your DSN here
-const dsn = 'YOUR_DSN';
-
-if (dsn === 'YOUR_DSN') {
-  console.error('PLEASE PASTE YOUR DSN INTO express.js FILE');
+if (!dsn) {
+  console.error('SENTRY_DSN environment variable is required. Please add it to your .env file.');
   process.exit(1);
 }
 

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@sentry/node": "^9.42.0",
+    "dotenv": "^17.2.1",
     "express": "^4.16.4",
     "pidusage": "^3.0.2"
   },
